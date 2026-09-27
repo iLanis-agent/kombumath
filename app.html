@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KombuMath - honest kombucha math</title>
+<style>
+  :root { --bg:#14160f; --card:#1e2115; --ink:#f2f4e8; --dim:#aab199; --acc:#c0c96a; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.5 -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { padding:28px 24px 8px; max-width:980px; margin:0 auto; display:flex; justify-content:space-between; align-items:baseline; }
+  h1 { margin:0; font-size:28px; }
+  h1 span { color:var(--acc); }
+  nav a { color:var(--dim); text-decoration:none; font-size:14px; }
+  main { max-width:980px; margin:0 auto; padding:16px 24px 60px; display:grid; gap:18px; }
+  .card { background:var(--card); border-radius:14px; padding:20px; }
+  .card h2 { margin:0 0 12px; font-size:13px; letter-spacing:1.5px; color:var(--dim); text-transform:uppercase; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px; }
+  label { display:block; font-size:13px; color:var(--dim); margin-bottom:4px; }
+  input, select { width:100%; background:#181a10; border:1px solid #4a4e35; color:var(--ink); border-radius:8px; padding:9px 10px; font-size:15px; }
+  .hint { font-size:12.5px; color:var(--dim); margin-top:10px; }
+  button { cursor:pointer; border:0; border-radius:9px; padding:11px 16px; font-size:15px; background:var(--acc); color:#2a2c10; font-weight:600; }
+  button.ghost { background:#3b3f28; color:var(--ink); font-weight:500; }
+  button.ghost.on { background:var(--acc); color:#2a2c10; font-weight:600; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; }
+  .verdict { font-size:17px; line-height:1.65; }
+  .verdict b { color:var(--acc); }
+  .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin-top:16px; }
+  .stat { background:#181a10; border-radius:10px; padding:12px; }
+  .stat .v { font-size:19px; font-weight:700; color:var(--acc); }
+  .stat .k { font-size:12px; color:var(--dim); margin-top:2px; }
+  .warn { background:#33291a; border:1px solid #6e5f35; border-radius:10px; padding:12px 14px; margin-top:14px; font-size:14px; color:#f0e8c8; }
+  .ok { background:#222e1a; border:1px solid #4c6e35; border-radius:10px; padding:12px 14px; margin-top:14px; font-size:14px; color:#dcefc8; }
+  table.bd { width:100%; border-collapse:collapse; margin-top:6px; font-size:14.5px; }
+  table.bd td { padding:7px 4px; border-bottom:1px solid #2e3222; }
+  table.bd td:last-child { text-align:right; color:var(--acc); font-weight:600; }
+  .fine { font-size:12.5px; color:var(--dim); margin-top:8px; }
+  a { color:var(--acc); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Kombu<span>Math</span></h1>
+  <nav><a href="index.html">about</a></nav>
+</header>
+<main>
+  <section class="card">
+    <h2>The batch</h2>
+    <div class="grid">
+      <div>
+        <label for="gal">Sweet tea (gallons)</label>
+        <input id="gal" type="number" min="0.5" max="10" step="0.5" value="2">
+      </div>
+      <div>
+        <label for="temp">Room temp (F)</label>
+        <input id="temp" type="number" min="55" max="100" step="1" value="74">
+      </div>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <button class="ghost on" id="stStrong">Strong starter (2 cups/gal)</button>
+      <button class="ghost" id="stMin">Minimum starter (1 cup/gal)</button>
+    </div>
+    <div class="row" id="presets"></div>
+    <div class="hint">Starter tea - the acidic liquid from your last batch - is the insurance policy. The pellicle ("the SCOBY") is mostly decoration; the starter is what crashes the pH before mold wakes up.</div>
+  </section>
+
+  <section class="card">
+    <h2>F1 - the ferment</h2>
+    <div class="verdict" id="verdict"></div>
+    <div class="stats" id="stats"></div>
+    <div id="riskBox"></div>
+  </section>
+
+  <section class="card">
+    <h2>F2 - the fizz</h2>
+    <div class="grid">
+      <div>
+        <label for="bottle">Bottle size (oz)</label>
+        <select id="bottle">
+          <option value="16" selected>16 oz swing-top</option>
+          <option value="32">32 oz growler</option>
+          <option value="12">12 oz bottle</option>
+        </select>
+      </div>
+    </div>
+    <div class="stats" id="f2Stats"></div>
+    <table class="bd" id="f2Table"></table>
+    <div class="warn">Burp a tester bottle daily once you are in the window. An F2 that runs a week at 80 F is not kombucha, it is a glass grenade with a swing-top.</div>
+  </section>
+
+  <section class="card">
+    <h2>The honest part</h2>
+    <div class="verdict" style="font-size:15px">
+      A new pellicle grows on top of every batch whether the brew is healthy or not - it is a byproduct, not a report card. The health meter is the starter tea and the pH it brings. Vinegary batch? That is not failure, that is starter for the next one at twice the strength.
+    </div>
+  </section>
+</main>
+<script src="engine.js"></script>
+<script>
+(function () {
+  var strong = true;
+  var PRESETS = [
+    ['First batch (1 gal)', 1, 74],
+    ['Weekly habit (2 gal)', 2, 74],
+    ['Cool basement', 2, 66],
+    ['Hot summer kitchen', 2, 82]
+  ];
+  var pw = document.getElementById('presets');
+  PRESETS.forEach(function (p) {
+    var b = document.createElement('button');
+    b.className = 'ghost'; b.textContent = p[0];
+    b.addEventListener('click', function () {
+      document.getElementById('gal').value = p[1];
+      document.getElementById('temp').value = p[2];
+      render();
+    });
+    pw.appendChild(b);
+  });
+  function setStrong(s) {
+    strong = s;
+    document.getElementById('stStrong').className = 'ghost' + (s ? ' on' : '');
+    document.getElementById('stMin').className = 'ghost' + (s ? '' : ' on');
+    render();
+  }
+  document.getElementById('stStrong').addEventListener('click', function () { setStrong(true); });
+  document.getElementById('stMin').addEventListener('click', function () { setStrong(false); });
+  function stat(v, k) { return '<div class="stat"><div class="v">' + v + '</div><div class="k">' + k + '</div></div>'; }
+  function render() {
+    var gal = Number(document.getElementById('gal').value) || 0;
+    var temp = Number(document.getElementById('temp').value) || 74;
+    if (gal <= 0) return;
+    var st = KombuEngine.starterCups(gal, strong);
+    var f1 = KombuEngine.f1Days(temp);
+    document.getElementById('verdict').innerHTML =
+      'Brew <b>' + KombuEngine.teaBags(gal) + ' tea bags</b> (or ' + KombuEngine.teaLooseTbsp(gal) + ' tbsp loose) with <b>' + KombuEngine.sugarCups(gal) + ' cups sugar</b> (' + KombuEngine.sugarGrams(gal) + ' g), ' +
+      'cool fully, then add <b>' + st + ' cups starter tea</b>. At ' + temp + ' F, F1 runs <b>' + f1.min + '-' + f1.max + ' days</b> - ' + f1.note + '.';
+    document.getElementById('stats').innerHTML =
+      stat(KombuEngine.sugarCups(gal) + ' cups', 'sugar') +
+      stat(KombuEngine.teaBags(gal), 'tea bags') +
+      stat(st + ' cups', 'starter tea') +
+      stat(f1.min + '-' + f1.max + ' days', 'F1 window');
+    var risk = KombuEngine.moldRiskNote(st, gal);
+    var risky = risk.indexOf('Under 6%') >= 0;
+    document.getElementById('riskBox').innerHTML = '<div class="' + (risky ? 'warn' : 'ok') + '">' + risk + '</div>';
+    var bz = Number(document.getElementById('bottle').value);
+    var n = KombuEngine.bottlesFromBatch(gal, bz, st);
+    var f2 = KombuEngine.f2Days(temp);
+    var juice = KombuEngine.f2JuiceOz(bz);
+    document.getElementById('f2Stats').innerHTML =
+      stat(n, bz + ' oz bottles') +
+      stat(f2.min + '-' + f2.max + ' days', 'F2 at ' + temp + ' F');
+    document.getElementById('f2Table').innerHTML =
+      '<tr><td>Plain (sugar)</td><td>1 tsp per bottle</td></tr>' +
+      '<tr><td>Fruit juice</td><td>' + juice + ' oz per bottle</td></tr>' +
+      '<tr><td>Then refrigerate</td><td>all of them, hard stop</td></tr>';
+  }
+  ['gal', 'temp', 'bottle'].forEach(function (id) {
+    document.getElementById(id).addEventListener('input', render);
+    document.getElementById(id).addEventListener('change', render);
+  });
+  render();
+})();
+</script>
+</body>
+</html>
